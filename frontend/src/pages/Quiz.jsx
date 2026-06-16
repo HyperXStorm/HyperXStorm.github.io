@@ -42,7 +42,7 @@ const elementIcons = {
 };
 
 // Placeholder booking link — clinic can update later
-const BOOKING_URL = "https://wa.me/919999999999?text=" + encodeURIComponent(
+const BOOKING_URL = "https://wa.me/917017952202?text=" + encodeURIComponent(
   "Hello Aham Arogyam, I'd like to book a TCM consultation."
 );
 
