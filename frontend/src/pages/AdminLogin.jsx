@@ -15,16 +15,20 @@ export default function AdminLogin() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+    setErrorMsg("");
     try {
       await login(email, password);
       toast.success("Welcome back");
       navigate("/admin");
     } catch (err) {
-      toast.error(formatApiErrorDetail(err.response?.data?.detail) || err.message);
+      const msg = formatApiErrorDetail(err.response?.data?.detail) || err.message;
+      setErrorMsg(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -73,6 +77,15 @@ export default function AdminLogin() {
                 className="rounded-xl border-[#E2DFD8] bg-[#FDFCFA] py-6 focus-visible:ring-2 focus-visible:ring-[#3E533B]/30 focus-visible:border-[#3E533B]"
               />
             </div>
+            {errorMsg && (
+              <div
+                role="alert"
+                data-testid="admin-login-error"
+                className="rounded-xl border border-[#B05B43]/30 bg-[#F8E7E0] text-[#8E3F2C] px-4 py-3 text-sm"
+              >
+                {errorMsg}
+              </div>
+            )}
             <Button
               type="submit"
               disabled={loading}
