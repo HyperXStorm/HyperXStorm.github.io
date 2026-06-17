@@ -30,13 +30,10 @@ const COLORS = {
   card: "#FFFFFF",
 };
 
-// Marble / ink-wash background as data URI — soft veining
-const MARBLE_BG =
-  "https://images.unsplash.com/photo-1615800001963-9cb52e2484e2?crop=entropy&cs=srgb&fm=jpg&w=2400&q=80";
-const LEAF_BG =
-  "https://images.unsplash.com/photo-1619847026538-a05c5deb6d3a?crop=entropy&cs=srgb&fm=jpg&w=1800&q=80";
-const KAVITA_IMG =
-  "https://images.unsplash.com/photo-1545389336-cf090694435e?crop=entropy&cs=srgb&fm=jpg&w=1200&q=80";
+const MARBLE_BG = "/images/hero-bg.png";
+const LEAF_BG = "/images/leaves-pattern.png";
+const ORGANIC_BG = "/images/organic-shape.png";
+const KAVITA_IMG = "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?q=80&w=1200&auto=format&fit=crop";
 
 export default function Landing() {
   return (
@@ -118,11 +115,10 @@ function TopHeader() {
 function Hero() {
   return (
     <section id="top" className="relative min-h-screen flex items-center justify-center overflow-hidden">
-      <div
-        className="absolute inset-0 bg-cover bg-center"
-        style={{ backgroundImage: `url('${MARBLE_BG}')` }}
-      />
-      <div className="absolute inset-0 bg-gradient-to-b from-[#F5EDDF]/85 via-[#F5EDDF]/70 to-[#F5EDDF]/95" />
+      <div className="absolute inset-0 z-0">
+        <img src={MARBLE_BG} alt="" className="w-full h-full object-cover opacity-60" />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#F5EDDF]/40 via-[#F5EDDF]/60 to-[#F5EDDF]" />
+      </div>
 
       <div className="relative max-w-3xl mx-auto text-center px-6 pt-24">
         <div className="inline-flex items-center rounded-full border border-[#B68B47]/40 bg-[#F5EDDF]/80 px-5 py-2 text-[11px] tracking-[0.28em] uppercase text-[#1F3A2E] mb-10">
@@ -239,10 +235,9 @@ function ServiceMenu() {
   return (
     <section
       id="services"
-      className="py-24 lg:py-32 relative"
-      style={{ background: `url('${LEAF_BG}') center/cover, #F5EDDF`, backgroundBlendMode: "soft-light" }}
+      className="py-24 lg:py-32 relative bg-[#F5EDDF]"
     >
-      <div className="absolute inset-0 bg-[#F5EDDF]/85" />
+      <img src={LEAF_BG} alt="" className="absolute inset-0 w-full h-full object-cover opacity-30 pointer-events-none" />
       <div className="relative max-w-7xl mx-auto px-6 lg:px-12">
         <div className="max-w-3xl mb-16 text-center mx-auto">
           <div className="text-[11px] tracking-[0.28em] uppercase text-[#B68B47] font-semibold mb-4">
