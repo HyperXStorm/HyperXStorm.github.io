@@ -25,9 +25,11 @@ function ProtectedRoute({ children }) {
 }
 
 function Shell() {
+  const loc = useLocation();
+  const hideNavbar = loc.pathname === "/";
   return (
     <>
-      <Navbar />
+      {!hideNavbar && <Navbar />}
       <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/quiz" element={<Quiz />} />
