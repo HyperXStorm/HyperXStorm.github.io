@@ -1,9 +1,8 @@
 import { useState } from "react";
-import { format } from "date-fns";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowRight,
   ArrowLeft,
-  CalendarIcon,
   Leaf,
   Flame,
   Mountain,
@@ -24,8 +23,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 import { ELEMENTS, QUESTIONS } from "@/lib/quizData";
@@ -38,23 +35,17 @@ const BOOKING_URL = "https://wa.me/917017952202?text=" + encodeURIComponent(
   "Hello Aham Arogyam, I'd like to book a TCM consultation."
 );
 
-function calcAge(dobIso) {
-  if (!dobIso) return null;
-  const d = new Date(dobIso);
-  if (Number.isNaN(d.getTime())) return null;
-  return Math.floor((Date.now() - d.getTime()) / (1000 * 60 * 60 * 24 * 365.25));
-}
-
 export default function Quiz() {
   // stages: "quiz" → "lead" → "result"
   const [stage, setStage] = useState("quiz");
 
   const [qIdx, setQIdx] = useState(0);
+  const [direction, setDirection] = useState(1); // 1 = forward, -1 = back
   const [answers, setAnswers] = useState({});
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [dob, setDob] = useState(null);
+  const [age, setAge] = useState("");
   const [gender, setGender] = useState("");
   const [location, setLocation] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -65,7 +56,9 @@ export default function Quiz() {
   const currentQ = QUESTIONS[qIdx];
   const progress = ((qIdx + (answers[currentQ?.id] ? 1 : 0)) / totalQ) * 100;
 
-  const canSubmitLead = name.trim() && email.trim() && dob && gender;
+  const ageNum = age ? parseInt(age, 10) : null;
+  const canSubmitLead =
+    name.trim() && email.trim() && ageNum && ageNum > 0 && ageNum < 120 && gender;
 
   const selectAnswer = (element) => setAnswers((p) => ({ ...p, [currentQ.id]: element }));
 
@@ -75,6 +68,7 @@ export default function Quiz() {
       return;
     }
     if (qIdx < totalQ - 1) {
+      setDirection(1);
       setQIdx(qIdx + 1);
     } else {
       setStage("lead");
@@ -83,7 +77,10 @@ export default function Quiz() {
   };
 
   const handleBack = () => {
-    if (qIdx > 0) setQIdx(qIdx - 1);
+    if (qIdx > 0) {
+      setDirection(-1);
+      setQIdx(qIdx - 1);
+    }
   };
 
   const handleLeadSubmit = async (e) => {
@@ -97,8 +94,7 @@ export default function Quiz() {
       const { data } = await api.post("/quiz/submit", {
         name: name.trim(),
         email: email.trim(),
-        dob: dob ? dob.toISOString().slice(0, 10) : null,
-        age: calcAge(dob),
+        age: ageNum,
         gender,
         location: location.trim() || null,
         answers: QUESTIONS.map((q) => ({ question_id: q.id, element: answers[q.id] })),
@@ -116,6 +112,7 @@ export default function Quiz() {
   const handleRestart = () => {
     setStage("quiz");
     setQIdx(0);
+    setDirection(1);
     setAnswers({});
     setResult(null);
   };
@@ -124,7 +121,7 @@ export default function Quiz() {
     return (
       <LeadForm
         name={name} setName={setName} email={email} setEmail={setEmail}
-        dob={dob} setDob={setDob} gender={gender} setGender={setGender}
+        age={age} setAge={setAge} gender={gender} setGender={setGender}
         location={location} setLocation={setLocation}
         canSubmit={canSubmitLead} submitting={submitting}
         onSubmit={handleLeadSubmit} onBack={() => setStage("quiz")}
@@ -137,45 +134,70 @@ export default function Quiz() {
   }
 
   return (
-    <div className="min-h-[calc(100vh-80px)] bg-[#F5EDDF] py-12 lg:py-16 px-6">
+    <div className="min-h-[calc(100vh-80px)] bg-[#F5EDDF] py-12 lg:py-16 px-6 overflow-hidden">
       <div className="max-w-2xl mx-auto">
         <div className="mb-10" data-testid={QUIZ.progress}>
           <div className="flex items-center justify-between text-xs tracking-[0.22em] uppercase text-[#7A6F62] mb-3">
             <span>Question {qIdx + 1} of {totalQ}</span>
             <span>{Math.round((qIdx / totalQ) * 100)}%</span>
           </div>
-          <Progress value={progress} className="h-1.5 bg-[#E6DCC7] [&>div]:bg-[#B68B47]" />
+          <Progress value={progress} className="h-1.5 bg-[#E6DCC7] [&>div]:bg-[#B68B47] [&>div]:transition-[width] [&>div]:duration-700 [&>div]:ease-out" />
         </div>
 
-        <h2 className="font-serif-display text-2xl sm:text-3xl lg:text-4xl text-[#1F3A2E] font-medium leading-snug tracking-tight mb-10">
-          {currentQ.text}
-        </h2>
+        <AnimatePresence mode="wait" custom={direction}>
+          <motion.div
+            key={currentQ.id}
+            custom={direction}
+            initial={{ opacity: 0, x: direction * 40 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: direction * -40 }}
+            transition={{ duration: 0.45, ease: [0.32, 0.72, 0.24, 1] }}
+          >
+            <motion.h2
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.05 }}
+              className="font-serif-display text-2xl sm:text-3xl lg:text-4xl text-[#1F3A2E] font-medium leading-snug tracking-tight mb-10"
+            >
+              {currentQ.text}
+            </motion.h2>
 
-        <div className="space-y-3">
-          {currentQ.options.map((opt, idx) => {
-            const selected = answers[currentQ.id] === opt.element;
-            return (
-              <button
-                key={idx}
-                type="button"
-                data-testid={QUIZ.option(currentQ.id, idx)}
-                onClick={() => selectAnswer(opt.element)}
-                className={`w-full text-left rounded-xl border px-5 py-4 transition-all duration-300 flex items-center gap-4 ${
-                  selected
-                    ? "bg-[#1F3A2E] text-[#F5EDDF] border-[#1F3A2E] shadow-[0_8px_24px_rgba(31,58,46,0.25)]"
-                    : "bg-white border-[#1F3A2E]/15 hover:border-[#B68B47]/60 hover:bg-[#FBF6EC]"
-                }`}
-              >
-                <div className={`w-7 h-7 rounded-full border grid place-items-center flex-shrink-0 ${
-                  selected ? "bg-[#B68B47] border-[#B68B47]" : "border-[#B68B47]/40"
-                }`}>
-                  {selected && <Check className="w-4 h-4 text-white" />}
-                </div>
-                <span className={selected ? "text-[#F5EDDF]" : "text-[#2C2A29]"}>{opt.label}</span>
-              </button>
-            );
-          })}
-        </div>
+            <div className="space-y-3">
+              {currentQ.options.map((opt, idx) => {
+                const selected = answers[currentQ.id] === opt.element;
+                return (
+                  <motion.button
+                    key={idx}
+                    type="button"
+                    data-testid={QUIZ.option(currentQ.id, idx)}
+                    onClick={() => selectAnswer(opt.element)}
+                    initial={{ opacity: 0, y: 14 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.4, delay: 0.1 + idx * 0.06, ease: "easeOut" }}
+                    whileHover={{ y: -2 }}
+                    whileTap={{ scale: 0.985 }}
+                    className={`w-full text-left rounded-xl border px-5 py-4 transition-colors duration-300 flex items-center gap-4 ${
+                      selected
+                        ? "bg-[#1F3A2E] text-[#F5EDDF] border-[#1F3A2E] shadow-[0_8px_24px_rgba(31,58,46,0.25)]"
+                        : "bg-white border-[#1F3A2E]/15 hover:border-[#B68B47]/60 hover:bg-[#FBF6EC]"
+                    }`}
+                  >
+                    <motion.div
+                      animate={selected ? { scale: [1, 1.15, 1] } : { scale: 1 }}
+                      transition={{ duration: 0.35 }}
+                      className={`w-7 h-7 rounded-full border grid place-items-center flex-shrink-0 ${
+                        selected ? "bg-[#B68B47] border-[#B68B47]" : "border-[#B68B47]/40"
+                      }`}
+                    >
+                      {selected && <Check className="w-4 h-4 text-white" />}
+                    </motion.div>
+                    <span className={selected ? "text-[#F5EDDF]" : "text-[#2C2A29]"}>{opt.label}</span>
+                  </motion.button>
+                );
+              })}
+            </div>
+          </motion.div>
+        </AnimatePresence>
 
         <div className="mt-10 flex items-center justify-between">
           <Button
@@ -201,11 +223,16 @@ export default function Quiz() {
 
 // ----------------- LEAD FORM (AFTER QUIZ) -----------------
 function LeadForm({
-  name, setName, email, setEmail, dob, setDob, gender, setGender,
+  name, setName, email, setEmail, age, setAge, gender, setGender,
   location, setLocation, canSubmit, submitting, onSubmit, onBack,
 }) {
   return (
-    <div className="min-h-[calc(100vh-80px)] bg-[#F5EDDF] py-12 lg:py-20 px-6">
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, ease: [0.32, 0.72, 0.24, 1] }}
+      className="min-h-[calc(100vh-80px)] bg-[#F5EDDF] py-12 lg:py-20 px-6"
+    >
       <div className="max-w-xl mx-auto">
         <div className="text-[11px] tracking-[0.28em] uppercase text-[#B68B47] font-semibold mb-4">
           One last step · Your reading is ready
@@ -227,22 +254,18 @@ function LeadForm({
               className="rounded-xl border-[#1F3A2E]/15 bg-white px-4 py-6 focus-visible:ring-2 focus-visible:ring-[#B68B47]/30 focus-visible:border-[#B68B47]" />
           </Field>
           <div className="grid sm:grid-cols-2 gap-5">
-            <Field label="Date of birth" required>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <button type="button" data-testid={LEAD.dobTrigger}
-                    className="w-full rounded-xl border border-[#1F3A2E]/15 bg-white px-4 py-3.5 text-left flex items-center justify-between hover:border-[#B68B47]/60 transition-colors">
-                    <span className={dob ? "text-[#2C2A29]" : "text-[#7A6F62]"}>
-                      {dob ? format(dob, "PPP") : "Pick a date"}
-                    </span>
-                    <CalendarIcon className="w-4 h-4 text-[#B68B47]" />
-                  </button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar mode="single" selected={dob} onSelect={setDob} captionLayout="dropdown-buttons"
-                    fromYear={1925} toYear={new Date().getFullYear()} initialFocus />
-                </PopoverContent>
-              </Popover>
+            <Field label="Age" required>
+              <Input
+                type="number"
+                inputMode="numeric"
+                min={1}
+                max={119}
+                value={age}
+                onChange={(e) => setAge(e.target.value.replace(/[^0-9]/g, ""))}
+                placeholder="e.g. 32"
+                data-testid={LEAD.age}
+                className="rounded-xl border-[#1F3A2E]/15 bg-white px-4 py-6 focus-visible:ring-2 focus-visible:ring-[#B68B47]/30 focus-visible:border-[#B68B47]"
+              />
             </Field>
             <Field label="Gender" required>
               <Select value={gender} onValueChange={setGender}>
@@ -281,7 +304,7 @@ function LeadForm({
           </div>
         </form>
       </div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -309,17 +332,32 @@ function ResultView({ result, onRestart }) {
     toast.success("Result copied to clipboard");
   };
 
+  const ease = [0.32, 0.72, 0.24, 1];
+  const fadeUp = (delay = 0) => ({
+    initial: { opacity: 0, y: 24 },
+    animate: { opacity: 1, y: 0 },
+    transition: { duration: 0.7, delay, ease },
+  });
+
   return (
     <div
-      className="min-h-[calc(100vh-80px)] py-14 lg:py-20 px-6"
+      className="min-h-[calc(100vh-80px)] py-14 lg:py-20 px-6 overflow-hidden"
       style={{ background: `linear-gradient(180deg, ${el.bg}80 0%, #F5EDDF 60%)` }}
     >
       <div className="max-w-3xl mx-auto">
         <div className="text-center mb-10">
-          <div className="text-[11px] tracking-[0.28em] uppercase text-[#B68B47] font-semibold mb-4">
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="text-[11px] tracking-[0.28em] uppercase text-[#B68B47] font-semibold mb-4"
+          >
             Your dominant element
-          </div>
-          <div
+          </motion.div>
+          <motion.div
+            initial={{ scale: 0.6, opacity: 0, rotate: -8 }}
+            animate={{ scale: 1, opacity: 1, rotate: 0 }}
+            transition={{ duration: 1.1, delay: 0.15, type: "spring", stiffness: 90, damping: 14 }}
             className="w-28 h-28 mx-auto rounded-full grid place-items-center mb-6 shadow-[0_20px_60px_rgba(31,58,46,0.12)] border border-white/60"
             style={{ background: el.bg }}
           >
@@ -327,16 +365,22 @@ function ResultView({ result, onRestart }) {
               <Icon className="w-7 h-7 mx-auto mb-1" style={{ color: el.accent }} />
               <div className="font-serif-display text-3xl" style={{ color: el.accent }}>{el.chinese}</div>
             </div>
-          </div>
-          <h1 className="font-serif-display text-4xl sm:text-5xl lg:text-6xl text-[#1F3A2E] font-normal leading-none tracking-tight mb-2">
+          </motion.div>
+          <motion.h1
+            {...fadeUp(0.45)}
+            className="font-serif-display text-4xl sm:text-5xl lg:text-6xl text-[#1F3A2E] font-normal leading-none tracking-tight mb-2"
+          >
             {el.name}
-          </h1>
-          <div className="text-base sm:text-lg text-[#B68B47] italic font-serif-display">
+          </motion.h1>
+          <motion.div
+            {...fadeUp(0.6)}
+            className="text-base sm:text-lg text-[#B68B47] italic font-serif-display"
+          >
             {el.tagline}
-          </div>
+          </motion.div>
         </div>
 
-        <div className="bg-white rounded-2xl border border-[#1F3A2E]/8 shadow-[0_8px_30px_rgba(31,58,46,0.05)] p-8 sm:p-10 mb-8">
+        <motion.div {...fadeUp(0.75)} className="bg-white rounded-2xl border border-[#1F3A2E]/8 shadow-[0_8px_30px_rgba(31,58,46,0.05)] p-8 sm:p-10 mb-8">
           <p className="text-[#2C2A29] text-lg leading-relaxed mb-8">{el.description}</p>
           <div className="grid sm:grid-cols-2 gap-8">
             <Block title="Your Strengths" items={el.strengths} accent="#1F3A2E" />
@@ -347,46 +391,58 @@ function ResultView({ result, onRestart }) {
             <MetaRow label="Organ System" value={el.organ} />
             <MetaRow label="Emotion" value={el.emotion} />
           </div>
-        </div>
+        </motion.div>
 
-        <div className="bg-white rounded-2xl border border-[#1F3A2E]/8 p-8 sm:p-10 mb-8">
+        <motion.div {...fadeUp(0.9)} className="bg-white rounded-2xl border border-[#1F3A2E]/8 p-8 sm:p-10 mb-8">
           <div className="text-[11px] tracking-[0.28em] uppercase text-[#B68B47] font-semibold mb-4">
             Personalised wellness tips
           </div>
           <ul className="space-y-4">
             {el.tips.map((t, i) => (
-              <li key={i} className="flex gap-4">
+              <motion.li
+                key={i}
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.5, delay: 1.0 + i * 0.08, ease }}
+                className="flex gap-4"
+              >
                 <span className="w-7 h-7 rounded-full grid place-items-center flex-shrink-0 font-serif-display text-sm bg-[#FBF6EC] text-[#B68B47]">
                   {i + 1}
                 </span>
                 <span className="text-[#2C2A29] leading-relaxed">{t}</span>
-              </li>
+              </motion.li>
             ))}
           </ul>
-        </div>
+        </motion.div>
 
-        <div className="bg-white rounded-2xl border border-[#1F3A2E]/8 p-8 sm:p-10 mb-8">
+        <motion.div {...fadeUp(1.05)} className="bg-white rounded-2xl border border-[#1F3A2E]/8 p-8 sm:p-10 mb-8">
           <div className="text-[11px] tracking-[0.28em] uppercase text-[#B68B47] font-semibold mb-5">
             Your element distribution
           </div>
           <div className="space-y-3">
-            {Object.entries(result.scores).map(([k, v]) => {
+            {Object.entries(result.scores).map(([k, v], idx) => {
               const e = ELEMENTS[k];
               const pct = total ? Math.round((v / total) * 100) : 0;
               return (
                 <div key={k} className="flex items-center gap-4">
                   <div className="w-16 text-sm text-[#4A4846]">{e.name}</div>
                   <div className="flex-1 h-2 rounded-full bg-[#FBF6EC] overflow-hidden">
-                    <div className="h-full rounded-full transition-all duration-700" style={{ width: `${pct}%`, background: e.color }} />
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: `${pct}%` }}
+                      transition={{ duration: 1.1, delay: 1.15 + idx * 0.1, ease }}
+                      className="h-full rounded-full"
+                      style={{ background: e.color }}
+                    />
                   </div>
                   <div className="w-10 text-right text-sm font-medium text-[#1F3A2E]">{pct}%</div>
                 </div>
               );
             })}
           </div>
-        </div>
+        </motion.div>
 
-        <div className="rounded-2xl p-8 sm:p-10 text-center mb-6 bg-[#1F3A2E] text-[#F5EDDF]">
+        <motion.div {...fadeUp(1.2)} className="rounded-2xl p-8 sm:p-10 text-center mb-6 bg-[#1F3A2E] text-[#F5EDDF]">
           <div className="font-serif-display text-2xl sm:text-3xl mb-3 leading-tight">
             Ready to bring your {el.name} energy back into balance?
           </div>
@@ -397,9 +453,9 @@ function ResultView({ result, onRestart }) {
             className="inline-flex items-center gap-3 rounded-full bg-[#B68B47] hover:bg-[#9A7536] text-white px-8 py-4 font-medium hover:-translate-y-0.5 transition-all shadow-md">
             Book my appointment <ArrowRight className="w-4 h-4" />
           </a>
-        </div>
+        </motion.div>
 
-        <div className="bg-white border border-[#1F3A2E]/10 rounded-2xl p-6 sm:p-8 mb-6">
+        <motion.div {...fadeUp(1.35)} className="bg-white border border-[#1F3A2E]/10 rounded-2xl p-6 sm:p-8 mb-6">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="text-sm text-[#4A4846] flex items-center gap-2">
               <Share2 className="w-4 h-4 text-[#B68B47]" /> Share your element with friends
@@ -417,14 +473,14 @@ function ResultView({ result, onRestart }) {
               </button>
             </div>
           </div>
-        </div>
+        </motion.div>
 
-        <div className="text-center">
+        <motion.div {...fadeUp(1.5)} className="text-center">
           <button type="button" onClick={onRestart} data-testid={QUIZ.restart}
             className="inline-flex items-center gap-2 text-sm text-[#7A6F62] hover:text-[#B68B47] transition-colors">
             <RotateCcw className="w-3.5 h-3.5" /> Retake the quiz
           </button>
-        </div>
+        </motion.div>
       </div>
     </div>
   );
