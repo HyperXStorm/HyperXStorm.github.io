@@ -439,17 +439,40 @@ function BeginHealing() {
     "Hello Aham Arogyam, I'd like to request an appointment."
   );
 
-  const handleSubmit = (e) => {
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const fd = new FormData(e.target);
+    const payload = {
+      name: fd.get("name"),
+      email: fd.get("email"),
+      phone: fd.get("phone"),
+      service: fd.get("service"),
+      preferred_date: fd.get("date") || null,
+      preferred_time: fd.get("time") || null,
+      message: fd.get("note") || null,
+    };
+    setSending(true);
+    try {
+      const res = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/appointments/request`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) throw new Error("Failed to send");
+      setSent(true);
+      e.target.reset();
+    } catch (err) {
+      // Even if API fails, open WhatsApp as fallback
+    } finally {
+      setSending(false);
+    }
     const text = `Hello Aham Arogyam, I'd like to book an appointment.\n\n` +
-      `Name: ${fd.get("name")}\n` +
-      `Phone: ${fd.get("phone")}\n` +
-      `Email: ${fd.get("email")}\n` +
-      `Service: ${fd.get("service")}\n` +
-      `Date: ${fd.get("date")}\n` +
-      `Time: ${fd.get("time")}\n` +
-      `Note: ${fd.get("note") || "-"}`;
+      `Name: ${payload.name}\nPhone: ${payload.phone}\nEmail: ${payload.email}\n` +
+      `Service: ${payload.service}\nDate: ${payload.preferred_date || "-"}\n` +
+      `Time: ${payload.preferred_time || "-"}\nNote: ${payload.message || "-"}`;
     window.open(`https://wa.me/917017952202?text=${encodeURIComponent(text)}`, "_blank");
   };
 
@@ -498,10 +521,11 @@ function BeginHealing() {
             </div>
             <button
               type="submit"
+              disabled={sending}
               data-testid="request-appointment-btn"
-              className="w-full rounded-full bg-[#B68B47] hover:bg-[#9A7536] text-white py-4 font-medium transition-all hover:-translate-y-0.5 shadow-md"
+              className="w-full rounded-full bg-[#B68B47] hover:bg-[#9A7536] text-white py-4 font-medium transition-all hover:-translate-y-0.5 shadow-md disabled:opacity-60"
             >
-              Request Appointment
+              {sending ? "Sending…" : sent ? "Request Sent ✓ Send Another?" : "Request Appointment"}
             </button>
             <a href={WA} target="_blank" rel="noopener noreferrer" className="block text-center text-xs text-[#7A6F62] hover:text-[#B68B47] transition-colors">
               Prefer WhatsApp directly? Tap here.

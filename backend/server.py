@@ -176,6 +176,43 @@ async def quiz_stats(admin: dict = Depends(get_current_admin)):
     }
 
 
+# ---- Appointment Requests ----
+class AppointmentRequest(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    name: str
+    email: EmailStr
+    phone: str
+    service: str
+    preferred_date: Optional[str] = None
+    preferred_time: Optional[str] = None
+    message: Optional[str] = None
+
+
+@api_router.post("/appointments/request")
+async def request_appointment(body: AppointmentRequest):
+    doc = {
+        "id": str(uuid.uuid4()),
+        "name": body.name.strip(),
+        "email": body.email.lower().strip(),
+        "phone": body.phone.strip(),
+        "service": body.service.strip(),
+        "preferred_date": body.preferred_date,
+        "preferred_time": body.preferred_time,
+        "message": (body.message or "").strip() or None,
+        "status": "new",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.appointment_requests.insert_one(doc)
+    doc.pop("_id", None)
+    return doc
+
+
+@api_router.get("/appointments")
+async def list_appointments(admin: dict = Depends(get_current_admin)):
+    docs = await db.appointment_requests.find({}, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    return docs
+
+
 @api_router.get("/")
 async def root():
     return {"message": "Aham Arogyam TCM Quiz API"}
@@ -188,6 +225,7 @@ async def startup():
     await db.users.create_index("email", unique=True)
     await db.users.create_index("id", unique=True)
     await db.quiz_submissions.create_index("created_at")
+    await db.appointment_requests.create_index("created_at")
 
     # Seed admin
     admin_email = os.environ["ADMIN_EMAIL"].lower().strip()

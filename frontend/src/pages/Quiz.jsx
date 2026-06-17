@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowRight,
@@ -326,6 +326,11 @@ function ResultView({ result, onRestart }) {
   const total = Object.values(result.scores).reduce((s, v) => s + v, 0);
   const shareText = `I just discovered I'm a ${el.name} element type (${el.chinese}) — "${el.tagline}" — on the Aham Arogyam TCM Quiz! ✨`;
   const shareUrl = window.location.origin;
+
+  useEffect(() => {
+    // soft singing-bowl chime on reveal
+    import("@/lib/chime").then((m) => m.playResultChime());
+  }, []);
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(`${shareText} ${shareUrl}`);
